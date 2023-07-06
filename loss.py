@@ -8,8 +8,10 @@ import torchvision
 class vgg_19(nn.Module):
     def __init__(self, index):
         super(vgg_19, self).__init__()
-        vgg_model = torchvision.models.vgg19(pretrained=True)
+        vgg_model = torchvision.models.vgg19(weights=torchvision.models.VGG19_Weights.IMAGENET1K_V1)
         self.feature_ext = nn.Sequential(*list(vgg_model.features.children())[:index])
+        for param in self.feature_ext.parameters():
+            param.requires_grad = False
 
     def forward(self, x):
         if x.size(1) == 1:
@@ -140,13 +142,16 @@ def vgg_preprocess(batch):
 class Perceptual_loss(nn.Module):
     def __init__(self):
         super(Perceptual_loss, self).__init__()
+        self.map = nn.Conv2d(24, 3, 3, padding=1)
         self.instancenorm = nn.InstanceNorm2d(512, affine=False)
         self.vgg = vgg_19(20)
 
-    def forward(self, vgg, img, target):
-        img_vgg = vgg_preprocess(img)
-        target_vgg = vgg_preprocess(target)
-        img_fea = vgg(img_vgg)
-        target_fea = vgg(target_vgg)
+    def forward(self, img, target):
+        img_vgg = self.map(img)
+        target_vgg = self.map(target)
+        img_vgg = vgg_preprocess(img_vgg)
+        target_vgg = vgg_preprocess(target_vgg)
+        img_fea = self.vgg(img_vgg)
+        target_fea = self.vgg(target_vgg)
         return torch.mean((self.instancenorm(img_fea) - self.instancenorm(target_fea)) ** 2)
 
