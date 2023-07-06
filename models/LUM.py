@@ -2,7 +2,7 @@ from abc import ABC
 
 from torch import nn
 import torch
-from models.NDM_model import Conv2dBlock
+from models.NDM import Conv2dBlock
 try:
     from itertools import izip as zip
 except ImportError:
@@ -16,8 +16,8 @@ class DecomNet(nn.Module, ABC):
         self.activ = params['activ']
         self.pad_type = params['pad_type']
         #
-        self.conv0 = Conv2dBlock(4, 32, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
-        self.conv1 = Conv2dBlock(4, 64, 9, 1, 4, norm=self.norm, activation='none', pad_type=self.pad_type)
+        self.conv0 = Conv2dBlock(25, 32, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
+        self.conv1 = Conv2dBlock(25, 64, 9, 1, 4, norm=self.norm, activation='none', pad_type=self.pad_type)
         self.conv2 = Conv2dBlock(64, 64, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
         self.conv3 = Conv2dBlock(64, 128, 3, 2, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
         self.conv4 = Conv2dBlock(128, 128, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
@@ -25,7 +25,7 @@ class DecomNet(nn.Module, ABC):
         self.activation = nn.ReLU(inplace=True)
         self.conv6 = Conv2dBlock(128, 64, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
         self.conv7 = Conv2dBlock(96, 64, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
-        self.conv8 = Conv2dBlock(64, 4, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
+        self.conv8 = Conv2dBlock(64, 48, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
 
     def forward(self, input_im):
         input_max = torch.max(input_im, dim=1, keepdim=True)[0]
@@ -53,6 +53,6 @@ class DecomNet(nn.Module, ABC):
         x8 = self.conv8(x7)
         # print('x8:', x8.shape)
         # Outputs
-        R = torch.sigmoid(x8[:, 0:3, :, :])
-        L = torch.sigmoid(x8[:, 3:4, :, :])
+        R = torch.sigmoid(x8[:, 0:24, :, :])
+        L = torch.sigmoid(x8[:, 24:48, :, :])
         return R, L

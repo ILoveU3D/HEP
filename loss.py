@@ -1,18 +1,21 @@
-import math
-import numbers
-from abc import ABC
-
 import torch
 from torch import nn as nn
-from torch.autograd import Variable
 from torch.nn import functional as F
-import numpy as np
-import cv2
-import torchvision.transforms as transforms
-from PIL import Image
 from pylab import *
-import matplotlib.pyplot as plt
-from utils import vgg_preprocess
+from torch.autograd import Variable
+import torchvision
+
+class vgg_19(nn.Module):
+    def __init__(self, index):
+        super(vgg_19, self).__init__()
+        vgg_model = torchvision.models.vgg19(pretrained=True)
+        self.feature_ext = nn.Sequential(*list(vgg_model.features.children())[:index])
+
+    def forward(self, x):
+        if x.size(1) == 1:
+            x = torch.cat((x, x, x), 1)
+        out = self.feature_ext(x)
+        return out
 
 
 def gradient(input_tensor, direction):
@@ -123,11 +126,22 @@ class TV_loss(nn.Module):
         w_tv = torch.pow((x[:, :, :, 1:] - x[:, :, :, :w_x - 1]), 2).sum()
         return self.TVLoss_weight * 2 * (h_tv / count_h + w_tv / count_w) / batch_size
 
+def vgg_preprocess(batch):
+    tensor_type = type(batch.data)
+    (r, g, b) = torch.chunk(batch, 3, dim=1)
+    batch = torch.cat((b, g, r), dim=1)  # convert RGB to BGR
+    mean = tensor_type(batch.data.size()).cuda()
+    mean[:, 0, :, :] = 103.939
+    mean[:, 1, :, :] = 116.779
+    mean[:, 2, :, :] = 123.680
+    batch = batch.sub(Variable(mean))  # subtract mean
+    return batch
 
 class Perceptual_loss(nn.Module):
     def __init__(self):
         super(Perceptual_loss, self).__init__()
         self.instancenorm = nn.InstanceNorm2d(512, affine=False)
+        self.vgg = vgg_19(20)
 
     def forward(self, vgg, img, target):
         img_vgg = vgg_preprocess(img)
