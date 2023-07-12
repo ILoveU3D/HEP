@@ -18,19 +18,16 @@ class ViewsetSingle(Dataset):
 
     def __getitem__(self, item):
         image = torch.zeros(self.batchsize, *self.size)
-        imageEq = torch.zeros(self.batchsize, *self.size)
-        images = []
         for idx, sub in enumerate(self.l):
             catch = random.randint(0, len(sub)-1)
             subImage = np.fromfile(os.path.join(self.dir, sub[catch]), dtype="float32")
             subImage = np.reshape(subImage, self.size)
             subImage = process(subImage)
-            images.append(subImage)
             image[idx,:,:] = torch.from_numpy(subImage)
-        images = histEq(images)
-        for idx, sub in enumerate(images):
-            imageEq[idx, :, :] = torch.from_numpy(sub)
-        return image, imageEq
+        # images = histEq(images)
+        # for idx, sub in enumerate(images):
+        #     imageEq[idx, :, :] = torch.from_numpy(sub)
+        return image
 
     def __len__(self):
         return self.len

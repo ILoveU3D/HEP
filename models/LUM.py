@@ -25,7 +25,7 @@ class DecomNet(nn.Module, ABC):
         self.activation = nn.ReLU(inplace=True)
         self.conv6 = Conv2dBlock(128, 64, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
         self.conv7 = Conv2dBlock(96, 64, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
-        self.conv8 = Conv2dBlock(64, 48, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
+        self.conv8 = Conv2dBlock(64, 24, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
 
     def forward(self, input_im):
         input_max = torch.max(input_im, dim=1, keepdim=True)[0]
@@ -53,6 +53,4 @@ class DecomNet(nn.Module, ABC):
         x8 = self.conv8(x7)
         # print('x8:', x8.shape)
         # Outputs
-        R = torch.sigmoid(x8[:, 0:24, :, :])
-        L = torch.sigmoid(x8[:, 24:48, :, :])
-        return R, L
+        return torch.relu(x8)
