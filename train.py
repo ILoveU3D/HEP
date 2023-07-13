@@ -12,9 +12,9 @@ setproctitle.setproctitle("(wyk)HEP light")
 lossFunction = torch.nn.L1Loss(reduction="mean")
 device = 0
 
-trainSet = ViewsetSingle("/home/nv/wyk/Data/light/proj_1_1", 100)
+trainSet = ViewsetSingle("/home/nv/wyk/Data/light/proj_1_1", 1000)
 validSet = ViewsetAll("/home/nv/wyk/Data/light/proj_1_1")
-trainLoader = DataLoader(trainSet, batch_size=1, shuffle=False)
+trainLoader = DataLoader(trainSet, batch_size=10, shuffle=False)
 validLoader = DataLoader(validSet, batch_size=1, shuffle=False)
 
 net = DecomNet({'norm':"none", 'activ':'relu', 'pad_type':'zero'}).to(device)
@@ -29,12 +29,11 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 # scheduler.load_state_dict(dictionary["scheduler"])
 
 checkpointPath = "/home/nv/wyk/Data/light/checkpoint/"
-def saveTensor(data, target, i):
-    for k in range(data.size(1)):
-        data[...,k,:,:].detach().cpu().numpy().tofile(os.path.join(target, "output_{:02d}_{}.raw".format(k+1 ,i)))
+def saveTensor(data, target, i, nm="x.raw"):
+    data.detach().cpu().numpy().tofile(os.path.join(target, nm))
+    # for k in range(data.size(1)):
+    #     data[...,k,:,:].detach().cpu().numpy().tofile(os.path.join(target, "output_{:02d}_{}.raw".format(k+1 ,i)))
 
-trainLoss = []
-validLoss = []
 net.train()
 with tqdm(trainLoader) as iterator:
     for idx,data in enumerate(iterator):
@@ -42,15 +41,14 @@ with tqdm(trainLoader) as iterator:
         input = data
         input = input.to(device)
         l = net(input)
+        output = input * l.view(-1,24,1,1)
         optimizer.zero_grad()
-        perceptual_loss = mse(torch.mean(input.view(-1)), torch.mean((input*l).view(-1)))
-        remake_loss = mse(input*l, input)
-        tv_loss = tv(l)
-        loss = perceptual_loss + remake_loss + tv_loss
+        perceptual_loss = mse(l, torch.ones_like(l)) + torch.var(torch.mean(output, dim=(0,2,3)))
+        remake_loss = mse(output, input)
+        loss = perceptual_loss + remake_loss
         loss.backward()
         optimizer.step()
-        trainLoss.append(loss.item())
-        iterator.set_postfix_str("loss:{:.3f}(p:{:.3f},r:{:.3f},t:{:.3f}),epoch mean:{:.2f}".format(loss.item(), perceptual_loss.item(), remake_loss.item(), tv_loss.item(), np.mean(np.array(trainLoss))))
+        iterator.set_postfix_str("loss:{:.3f}(p:{:.3f},r:{:.3f})".format(loss.item(), perceptual_loss.item(), remake_loss.item()))
 net.eval()
 with torch.no_grad():
     with tqdm(validLoader) as iterator:
@@ -58,9 +56,10 @@ with torch.no_grad():
         for idx, input in enumerate(iterator):
             input= input.to(device)
             l = net(input)
-            output = input/l
-            saveTensor(input, "/home/nv/wyk/Data/light/input/", idx)
-            saveTensor(output, "/home/nv/wyk/Data/light/output/", idx)
-torch.save({
-    "epoch": len(trainLoader), "model": net.state_dict(), "optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict()
-}, "{}/hep_v1.0_{}.dict".format(checkpointPath, datetime.now()))
+            print(l)
+            output = input * l.view(-1,24,1,1)
+            saveTensor(input, "/home/nv/wyk/Data/light/", idx, "input.raw")
+            saveTensor(output, "/home/nv/wyk/Data/light/", idx, "output.raw")
+# torch.save({
+#     "epoch": len(trainLoader), "model": net.state_dict(), "optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict()
+# }, "{}/hep_v1.0_{}.dict".format(checkpointPath, datetime.now()))
