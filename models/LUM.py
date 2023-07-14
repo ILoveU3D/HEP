@@ -16,8 +16,8 @@ class DecomNet(nn.Module, ABC):
         self.activ = params['activ']
         self.pad_type = params['pad_type']
         #
-        self.conv0 = Conv2dBlock(25, 32, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
-        self.conv1 = Conv2dBlock(25, 64, 9, 1, 4, norm=self.norm, activation='none', pad_type=self.pad_type)
+        self.conv0 = Conv2dBlock(24, 32, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
+        self.conv1 = Conv2dBlock(24, 64, 9, 1, 4, norm=self.norm, activation='none', pad_type=self.pad_type)
         self.conv2 = Conv2dBlock(64, 64, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
         self.conv3 = Conv2dBlock(64, 128, 3, 2, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
         self.conv4 = Conv2dBlock(128, 128, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
@@ -28,12 +28,10 @@ class DecomNet(nn.Module, ABC):
         self.conv6 = Conv2dBlock(128, 64, 3, 1, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)
         self.conv7 = Conv2dBlock(96, 64, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
         self.conv8 = Conv2dBlock(64, 1, 3, 1, 1, norm=self.norm, activation='none', pad_type=self.pad_type)
-        self.fc = nn.Linear(18*160, 18*160)
-        self.oc = nn.Linear(18*160, 24)
+        self.fc = nn.Linear(18*160, 1000)
+        self.oc = nn.Linear(1000, 24)
 
-    def forward(self, input_im):
-        input_max = torch.max(input_im, dim=1, keepdim=True)[0]
-        image = torch.cat((input_max, input_im), dim=1)
+    def forward(self, image):
         x0 = self.conv0(image)
         x1 = self.conv1(image)
         x1 = self.apool(x1)
